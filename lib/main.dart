@@ -137,6 +137,7 @@ class BrewBatch {
   final DateTime startDate;
   final DateTime? bottlingDate;
   final DateTime? rackingDate;
+  final DateTime? finishedDate;
   final double? startingGravity;
   final double? endingGravity;
   final double? manualRating;
@@ -146,25 +147,29 @@ class BrewBatch {
   final List<Ingredient> ingredients;
   final List<GravityReading> gravityReadings;
   final List<TastingNote> tastings;
-  const BrewBatch({required this.id, required this.name, required this.type, required this.status, required this.startDate, this.bottlingDate, this.rackingDate, this.startingGravity, this.endingGravity, this.manualRating, this.volumeLiters = 0, this.yeast = '', this.notes = '', this.ingredients = const [], this.gravityReadings = const [], this.tastings = const []});
+  const BrewBatch({required this.id, required this.name, required this.type, required this.status, required this.startDate, this.bottlingDate, this.rackingDate, this.finishedDate, this.startingGravity, this.endingGravity, this.manualRating, this.volumeLiters = 0, this.yeast = '', this.notes = '', this.ingredients = const [], this.gravityReadings = const [], this.tastings = const []});
   bool get isIdea => status == BrewStatus.idea;
   bool get isCompleted => !isIdea;
   double? get abv => GravityCalculator.abv(startingGravity, endingGravity);
-  int get ageDays => DateTime.now().difference(bottlingDate ?? startDate).inDays;
+  DateTime get ageEndDate => status == BrewStatus.finished ? (finishedDate ?? DateTime.now()) : DateTime.now();
+  int get totalAgeDays => ageEndDate.difference(startDate).inDays;
+  int? get bottleAgeDays => bottlingDate == null ? null : ageEndDate.difference(bottlingDate!).inDays;
+  int get ageDays => totalAgeDays;
   double get score {
     final scored = tastings.map((t) => t.average).where((v) => v > 0).toList();
     if (scored.isEmpty) return manualRating ?? 0;
     return scored.reduce((a, b) => a + b) / scored.length;
   }
 
-  BrewBatch copyWith({String? name, String? type, BrewStatus? status, DateTime? startDate, DateTime? bottlingDate, DateTime? rackingDate, double? startingGravity, double? endingGravity, double? manualRating, double? volumeLiters, String? yeast, String? notes, List<Ingredient>? ingredients, List<GravityReading>? gravityReadings, List<TastingNote>? tastings}) => BrewBatch(id: id, name: name ?? this.name, type: type ?? this.type, status: status ?? this.status, startDate: startDate ?? this.startDate, bottlingDate: bottlingDate ?? this.bottlingDate, rackingDate: rackingDate ?? this.rackingDate, startingGravity: startingGravity ?? this.startingGravity, endingGravity: endingGravity ?? this.endingGravity, manualRating: manualRating ?? this.manualRating, volumeLiters: volumeLiters ?? this.volumeLiters, yeast: yeast ?? this.yeast, notes: notes ?? this.notes, ingredients: ingredients ?? this.ingredients, gravityReadings: gravityReadings ?? this.gravityReadings, tastings: tastings ?? this.tastings);
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'type': type, 'status': status.name, 'startDate': startDate.toIso8601String(), 'bottlingDate': bottlingDate?.toIso8601String(), 'rackingDate': rackingDate?.toIso8601String(), 'startingGravity': startingGravity, 'endingGravity': endingGravity, 'manualRating': manualRating, 'volumeLiters': volumeLiters, 'yeast': yeast, 'notes': notes, 'ingredients': ingredients.map((e) => e.toJson()).toList(), 'gravityReadings': gravityReadings.map((e) => e.toJson()).toList(), 'tastings': tastings.map((e) => e.toJson()).toList()};
-  factory BrewBatch.fromJson(Map<String, dynamic> json) => BrewBatch(id: json['id'] as String, name: json['name'] as String? ?? '', type: json['type'] as String? ?? 'Mead', status: statusFromJson(json['status']), startDate: DateTime.parse(json['startDate'] as String), bottlingDate: json['bottlingDate'] == null ? null : DateTime.parse(json['bottlingDate'] as String), rackingDate: json['rackingDate'] == null ? null : DateTime.parse(json['rackingDate'] as String), startingGravity: (json['startingGravity'] as num?)?.toDouble(), endingGravity: (json['endingGravity'] as num?)?.toDouble(), manualRating: (json['manualRating'] as num?)?.toDouble(), volumeLiters: (json['volumeLiters'] as num?)?.toDouble() ?? 0, yeast: json['yeast'] as String? ?? '', notes: json['notes'] as String? ?? '', ingredients: (json['ingredients'] as List? ?? []).map((e) => Ingredient.fromJson(Map<String, dynamic>.from(e))).toList(), gravityReadings: (json['gravityReadings'] as List? ?? []).map((e) => GravityReading.fromJson(Map<String, dynamic>.from(e))).toList(), tastings: (json['tastings'] as List? ?? []).map((e) => TastingNote.fromJson(Map<String, dynamic>.from(e))).toList());
+  BrewBatch copyWith({String? name, String? type, BrewStatus? status, DateTime? startDate, DateTime? bottlingDate, DateTime? rackingDate, DateTime? finishedDate, double? startingGravity, double? endingGravity, double? manualRating, double? volumeLiters, String? yeast, String? notes, List<Ingredient>? ingredients, List<GravityReading>? gravityReadings, List<TastingNote>? tastings}) => BrewBatch(id: id, name: name ?? this.name, type: type ?? this.type, status: status ?? this.status, startDate: startDate ?? this.startDate, bottlingDate: bottlingDate ?? this.bottlingDate, rackingDate: rackingDate ?? this.rackingDate, finishedDate: finishedDate ?? this.finishedDate, startingGravity: startingGravity ?? this.startingGravity, endingGravity: endingGravity ?? this.endingGravity, manualRating: manualRating ?? this.manualRating, volumeLiters: volumeLiters ?? this.volumeLiters, yeast: yeast ?? this.yeast, notes: notes ?? this.notes, ingredients: ingredients ?? this.ingredients, gravityReadings: gravityReadings ?? this.gravityReadings, tastings: tastings ?? this.tastings);
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'type': type, 'status': status.name, 'startDate': startDate.toIso8601String(), 'bottlingDate': bottlingDate?.toIso8601String(), 'rackingDate': rackingDate?.toIso8601String(), 'finishedDate': finishedDate?.toIso8601String(), 'startingGravity': startingGravity, 'endingGravity': endingGravity, 'manualRating': manualRating, 'volumeLiters': volumeLiters, 'yeast': yeast, 'notes': notes, 'ingredients': ingredients.map((e) => e.toJson()).toList(), 'gravityReadings': gravityReadings.map((e) => e.toJson()).toList(), 'tastings': tastings.map((e) => e.toJson()).toList()};
+  factory BrewBatch.fromJson(Map<String, dynamic> json) => BrewBatch(id: json['id'] as String, name: json['name'] as String? ?? '', type: json['type'] as String? ?? 'Mead', status: statusFromJson(json['status']), startDate: DateTime.parse(json['startDate'] as String), bottlingDate: json['bottlingDate'] == null ? null : DateTime.parse(json['bottlingDate'] as String), rackingDate: json['rackingDate'] == null ? null : DateTime.parse(json['rackingDate'] as String), finishedDate: json['finishedDate'] == null ? null : DateTime.parse(json['finishedDate'] as String), startingGravity: (json['startingGravity'] as num?)?.toDouble(), endingGravity: (json['endingGravity'] as num?)?.toDouble(), manualRating: (json['manualRating'] as num?)?.toDouble(), volumeLiters: (json['volumeLiters'] as num?)?.toDouble() ?? 0, yeast: json['yeast'] as String? ?? '', notes: json['notes'] as String? ?? '', ingredients: (json['ingredients'] as List? ?? []).map((e) => Ingredient.fromJson(Map<String, dynamic>.from(e))).toList(), gravityReadings: (json['gravityReadings'] as List? ?? []).map((e) => GravityReading.fromJson(Map<String, dynamic>.from(e))).toList(), tastings: (json['tastings'] as List? ?? []).map((e) => TastingNote.fromJson(Map<String, dynamic>.from(e))).toList());
 }
 
 class BatchController extends ChangeNotifier {
-  static const _storageKey = 'brewer_diary_batches_v2';
-  static const _oldStorageKey = 'brewer_diary_batches_v1';
+  static const _storageKey = 'brewer_diary_batches_v3';
+  static const _oldStorageKey = 'brewer_diary_batches_v2';
+  static const _olderStorageKey = 'brewer_diary_batches_v1';
   final _uuid = const Uuid();
   List<BrewBatch> _batches = [];
   bool loaded = false;
@@ -178,7 +183,7 @@ class BatchController extends ChangeNotifier {
   String newId() => _uuid.v4();
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey) ?? prefs.getString(_oldStorageKey);
+    final raw = prefs.getString(_storageKey) ?? prefs.getString(_oldStorageKey) ?? prefs.getString(_olderStorageKey);
     if (raw != null && raw.isNotEmpty) {
       final decoded = jsonDecode(raw) as List<dynamic>;
       _batches = decoded.map((e) => BrewBatch.fromJson(Map<String, dynamic>.from(e))).toList();
@@ -269,7 +274,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
             Padding(padding: const EdgeInsets.all(12), child: TextField(decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Keresés név, típus vagy alapanyag alapján', border: OutlineInputBorder()), onChanged: (value) => setState(() => query = value))),
             Expanded(child: batches.isEmpty ? const Center(child: Text('Még nincs elkészült batch.')) : ListView.builder(padding: const EdgeInsets.fromLTRB(12, 0, 12, 88), itemCount: batches.length, itemBuilder: (context, index) {
               final batch = batches[index];
-              return Card(child: ListTile(title: Text(batch.name, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('${batch.type} • ${df.format(batch.startDate)} • ${batch.status.label}\nOG: ${_sg(batch.startingGravity)} | FG: ${_sg(batch.endingGravity)} | ABV: ${_percent(batch.abv)} | Age: ${batch.ageDays} nap'), isThreeLine: true, trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchDetailScreen(controller: widget.controller, batchId: batch.id)))));
+              return Card(child: ListTile(title: Text(batch.name, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('${batch.type} • ${df.format(batch.startDate)} • ${batch.status.label}\nOG: ${_sg(batch.startingGravity)} | FG: ${_sg(batch.endingGravity)} | ABV: ${_percent(batch.abv)}\nKor: ${batch.totalAgeDays} nap | Palackban: ${_days(batch.bottleAgeDays)}'), isThreeLine: true, trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchDetailScreen(controller: widget.controller, batchId: batch.id)))));
             })),
           ]),
         );
@@ -279,6 +284,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
 
   String _sg(double? value) => value == null ? '-' : value.toStringAsFixed(3);
   String _percent(double? value) => value == null ? '-' : '${value.toStringAsFixed(1)}%';
+  String _days(int? value) => value == null ? '-' : '$value nap';
 }
 
 class RatingScreen extends StatelessWidget {
@@ -345,6 +351,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   DateTime startDate = DateTime.now();
   DateTime? bottlingDate;
   DateTime? rackingDate;
+  DateTime? finishedDate;
   late BrewStatus status;
   @override
   void initState() {
@@ -363,6 +370,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
       startDate = batch.startDate;
       bottlingDate = batch.bottlingDate;
       rackingDate = batch.rackingDate;
+      finishedDate = batch.finishedDate;
       status = batch.status;
     } else {
       type.text = 'Mead';
@@ -379,10 +387,11 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy.MM.dd');
     return Scaffold(appBar: AppBar(title: Text(widget.batch == null ? (status == BrewStatus.idea ? 'Új ötlet' : 'Új batch') : 'Szerkesztés')), body: ListView(padding: const EdgeInsets.all(16), children: [
-      _field(name, 'Név'), _field(type, 'Típus'), DropdownButtonFormField<BrewStatus>(initialValue: status, decoration: const InputDecoration(labelText: 'Státusz'), items: BrewStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(), onChanged: (value) => setState(() => status = value ?? status)), const SizedBox(height: 12),
+      _field(name, 'Név'), _field(type, 'Típus'), DropdownButtonFormField<BrewStatus>(value: status, decoration: const InputDecoration(labelText: 'Státusz'), items: BrewStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(), onChanged: (value) => setState(() { status = value ?? status; if (status == BrewStatus.finished) finishedDate ??= DateTime.now(); })), const SizedBox(height: 12),
       _dateTile('Kezdés dátuma', df.format(startDate), () async { final picked = await _pickDate(startDate); if (picked != null) setState(() => startDate = picked); }),
       _dateTile('Racking dátuma', rackingDate == null ? '-' : df.format(rackingDate!), () async { final picked = await _pickDate(rackingDate ?? DateTime.now()); if (picked != null) setState(() => rackingDate = picked); }),
       _dateTile('Palackozás dátuma', bottlingDate == null ? '-' : df.format(bottlingDate!), () async { final picked = await _pickDate(bottlingDate ?? DateTime.now()); if (picked != null) setState(() => bottlingDate = picked); }),
+      if (status == BrewStatus.finished) _dateTile('Elfogyás dátuma', df.format(finishedDate ?? DateTime.now()), () async { final picked = await _pickDate(finishedDate ?? DateTime.now()); if (picked != null) setState(() => finishedDate = picked); }),
       _field(volume, 'Mennyiség literben', keyboardType: const TextInputType.numberWithOptions(decimal: true)), _field(og, 'Starting Gravity / OG', keyboardType: const TextInputType.numberWithOptions(decimal: true)), _field(fg, 'Ending Gravity / FG', keyboardType: const TextInputType.numberWithOptions(decimal: true)), _field(rating, 'Gyors rating 0-10', keyboardType: const TextInputType.numberWithOptions(decimal: true)), _field(yeast, 'Élesztő'), _field(notes, 'Jegyzetek', maxLines: 5), const SizedBox(height: 20), FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save), label: const Text('Mentés')),
     ]));
   }
@@ -393,7 +402,8 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   double? _parseDouble(String value) { final normalized = value.trim().replaceAll(',', '.'); if (normalized.isEmpty) return null; return double.tryParse(normalized); }
   Future<void> _save() async {
     final old = widget.batch;
-    final batch = BrewBatch(id: old?.id ?? widget.controller.newId(), name: name.text.trim().isEmpty ? 'Névtelen batch' : name.text.trim(), type: type.text.trim().isEmpty ? 'Egyéb' : type.text.trim(), status: status, startDate: startDate, bottlingDate: bottlingDate, rackingDate: rackingDate, startingGravity: _parseDouble(og.text), endingGravity: _parseDouble(fg.text), manualRating: _parseDouble(rating.text), volumeLiters: _parseDouble(volume.text) ?? 0, yeast: yeast.text.trim(), notes: notes.text.trim(), ingredients: old?.ingredients ?? [], gravityReadings: old?.gravityReadings ?? [], tastings: old?.tastings ?? []);
+    final normalizedFinishedDate = status == BrewStatus.finished ? (finishedDate ?? old?.finishedDate ?? DateTime.now()) : null;
+    final batch = BrewBatch(id: old?.id ?? widget.controller.newId(), name: name.text.trim().isEmpty ? 'Névtelen batch' : name.text.trim(), type: type.text.trim().isEmpty ? 'Egyéb' : type.text.trim(), status: status, startDate: startDate, bottlingDate: bottlingDate, rackingDate: rackingDate, finishedDate: normalizedFinishedDate, startingGravity: _parseDouble(og.text), endingGravity: _parseDouble(fg.text), manualRating: _parseDouble(rating.text), volumeLiters: _parseDouble(volume.text) ?? 0, yeast: yeast.text.trim(), notes: notes.text.trim(), ingredients: old?.ingredients ?? [], gravityReadings: old?.gravityReadings ?? [], tastings: old?.tastings ?? []);
     await widget.controller.upsert(batch);
     if (mounted) Navigator.of(context).pop();
   }
@@ -409,7 +419,7 @@ class BatchDetailScreen extends StatelessWidget {
     if (batch == null) return const Scaffold(body: Center(child: Text('A batch eltűnt a pinceködben.')));
     final df = DateFormat('yyyy.MM.dd');
     return Scaffold(appBar: AppBar(title: Text(batch.name), actions: [IconButton(icon: const Icon(Icons.edit), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchEditScreen(controller: controller, batch: batch)))), IconButton(icon: const Icon(Icons.delete), onPressed: () async { await controller.delete(batch.id); if (context.mounted) Navigator.of(context).pop(); })]), body: ListView(padding: const EdgeInsets.all(16), children: [
-      _section(context, 'Alapadatok'), _line('Típus', batch.type), _line('Státusz', batch.status.label), _line('Kezdés', df.format(batch.startDate)), _line('Racking', batch.rackingDate == null ? '-' : df.format(batch.rackingDate!)), _line('Palackozás', batch.bottlingDate == null ? '-' : df.format(batch.bottlingDate!)), _line('Kor', '${batch.ageDays} nap'), _line('Mennyiség', batch.volumeLiters == 0 ? '-' : '${batch.volumeLiters} L'), _line('Élesztő', batch.yeast.isEmpty ? '-' : batch.yeast),
+      _section(context, 'Alapadatok'), _line('Típus', batch.type), _line('Státusz', batch.status.label), _line('Kezdés', df.format(batch.startDate)), _line('Racking', batch.rackingDate == null ? '-' : df.format(batch.rackingDate!)), _line('Palackozás', batch.bottlingDate == null ? '-' : df.format(batch.bottlingDate!)), if (batch.finishedDate != null) _line('Elfogyás', df.format(batch.finishedDate!)), _line('Teljes kor', '${batch.totalAgeDays} nap'), _line('Palackban', batch.bottleAgeDays == null ? '-' : '${batch.bottleAgeDays} nap'), _line('Mennyiség', batch.volumeLiters == 0 ? '-' : '${batch.volumeLiters} L'), _line('Élesztő', batch.yeast.isEmpty ? '-' : batch.yeast),
       _section(context, 'Gravity és ABV'), _line('OG', batch.startingGravity?.toStringAsFixed(3) ?? '-'), _line('FG', batch.endingGravity?.toStringAsFixed(3) ?? '-'), _line('ABV', batch.abv == null ? '-' : '${batch.abv!.toStringAsFixed(2)}%'),
       _headerButton(context, 'Összetevők', 'Hozzáadás', () => _addIngredient(context, batch)), ...batch.ingredients.map((i) => ListTile(title: Text(i.name), subtitle: Text('${i.amount} ${i.unit}${i.note.isEmpty ? '' : ' • ${i.note}'}'))),
       _headerButton(context, 'SG mérések', 'Hozzáadás', () => _addGravity(context, batch)), ...batch.gravityReadings.map((g) => ListTile(title: Text('${g.sg.toStringAsFixed(3)} SG'), subtitle: Text('${df.format(g.date)}${g.note.isEmpty ? '' : ' • ${g.note}'}'))),
@@ -450,23 +460,11 @@ class SettingsScreen extends StatelessWidget {
       );
 
   Future<void> _loadSeed(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Alap adatok betöltése'),
-        content: const Text('Ez lecseréli a jelenlegi helyi adatokat a beépített táblázat-importtal. Mehet?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Mégse')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Betöltés')),
-        ],
-      ),
-    );
+    final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('Alap adatok betöltése'), content: const Text('Ez lecseréli a jelenlegi helyi adatokat a beépített táblázat-importtal. Mehet?'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Mégse')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Betöltés'))]));
     if (confirmed != true) return;
     final jsonText = await rootBundle.loadString('seed/brewer_diary_seed.json');
     await controller.importJson(jsonText);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alap adatok betöltve.')));
-    }
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alap adatok betöltve.')));
   }
 
   void _showExport(BuildContext context) => showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Export JSON'), content: SingleChildScrollView(child: SelectableText(controller.exportJson())), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))]));
