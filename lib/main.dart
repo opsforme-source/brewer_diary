@@ -31,15 +31,44 @@ class _BrewerDiaryAppState extends State<BrewerDiaryApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Brewer Diary',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B1E4D)),
-        useMaterial3: true,
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B1E4D)), useMaterial3: true),
+      darkTheme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B1E4D), brightness: Brightness.dark), useMaterial3: true),
+      home: MainShell(controller: controller),
+    );
+  }
+}
+
+class MainShell extends StatefulWidget {
+  final BatchController controller;
+  const MainShell({super.key, required this.controller});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      IdeasScreen(controller: widget.controller),
+      BatchListScreen(controller: widget.controller),
+      RatingScreen(controller: widget.controller),
+      SettingsScreen(controller: widget.controller),
+    ];
+    return Scaffold(
+      body: pages[index],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (value) => setState(() => index = value),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.lightbulb_outline), selectedIcon: Icon(Icons.lightbulb), label: 'Ötletek'),
+          NavigationDestination(icon: Icon(Icons.local_bar_outlined), selectedIcon: Icon(Icons.local_bar), label: 'Elkészült'),
+          NavigationDestination(icon: Icon(Icons.star_outline), selectedIcon: Icon(Icons.star), label: 'Pontozás'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Beállítások'),
+        ],
       ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B1E4D), brightness: Brightness.dark),
-        useMaterial3: true,
-      ),
-      home: BatchListScreen(controller: controller),
     );
   }
 }
@@ -51,17 +80,22 @@ class GravityCalculator {
   }
 }
 
-enum BrewStatus { planned, fermenting, secondary, aging, bottled, finished }
+enum BrewStatus { idea, fermenting, secondary, aging, bottled, finished }
 
 extension BrewStatusLabel on BrewStatus {
   String get label => switch (this) {
-        BrewStatus.planned => 'Tervezett',
+        BrewStatus.idea => 'Ötlet',
         BrewStatus.fermenting => 'Erjed',
         BrewStatus.secondary => 'Másodlagos',
         BrewStatus.aging => 'Érlelődik',
         BrewStatus.bottled => 'Palackozva',
         BrewStatus.finished => 'Elfogyott',
       };
+}
+
+BrewStatus statusFromJson(dynamic value) {
+  if (value == 'planned') return BrewStatus.idea;
+  return BrewStatus.values.firstWhere((s) => s.name == value, orElse: () => BrewStatus.fermenting);
 }
 
 class Ingredient {
@@ -97,7 +131,7 @@ class GravityReading {
   factory GravityReading.fromJson(Map<String, dynamic> json) => GravityReading(
         id: json['id'] as String,
         date: DateTime.parse(json['date'] as String),
-        sg: (json['sg'] as num).toDouble(),
+        sg: (json['sg'] as num?)?.toDouble() ?? 1,
         note: json['note'] as String? ?? '',
       );
 }
@@ -189,11 +223,12 @@ class BrewBatch {
     this.tastings = const [],
   });
 
+  bool get isIdea => status == BrewStatus.idea;
+  bool get isCompleted => !isIdea;
   double? get abv => GravityCalculator.abv(startingGravity, endingGravity);
-
   int get ageDays => DateTime.now().difference(bottlingDate ?? startDate).inDays;
 
-  double get tastingAverage {
+  double get score {
     final scored = tastings.map((t) => t.average).where((v) => v > 0).toList();
     if (scored.isEmpty) return manualRating ?? 0;
     return scored.reduce((a, b) => a + b) / scored.length;
@@ -215,26 +250,25 @@ class BrewBatch {
     List<Ingredient>? ingredients,
     List<GravityReading>? gravityReadings,
     List<TastingNote>? tastings,
-  }) {
-    return BrewBatch(
-      id: id,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      status: status ?? this.status,
-      startDate: startDate ?? this.startDate,
-      bottlingDate: bottlingDate ?? this.bottlingDate,
-      rackingDate: rackingDate ?? this.rackingDate,
-      startingGravity: startingGravity ?? this.startingGravity,
-      endingGravity: endingGravity ?? this.endingGravity,
-      manualRating: manualRating ?? this.manualRating,
-      volumeLiters: volumeLiters ?? this.volumeLiters,
-      yeast: yeast ?? this.yeast,
-      notes: notes ?? this.notes,
-      ingredients: ingredients ?? this.ingredients,
-      gravityReadings: gravityReadings ?? this.gravityReadings,
-      tastings: tastings ?? this.tastings,
-    );
-  }
+  }) =>
+      BrewBatch(
+        id: id,
+        name: name ?? this.name,
+        type: type ?? this.type,
+        status: status ?? this.status,
+        startDate: startDate ?? this.startDate,
+        bottlingDate: bottlingDate ?? this.bottlingDate,
+        rackingDate: rackingDate ?? this.rackingDate,
+        startingGravity: startingGravity ?? this.startingGravity,
+        endingGravity: endingGravity ?? this.endingGravity,
+        manualRating: manualRating ?? this.manualRating,
+        volumeLiters: volumeLiters ?? this.volumeLiters,
+        yeast: yeast ?? this.yeast,
+        notes: notes ?? this.notes,
+        ingredients: ingredients ?? this.ingredients,
+        gravityReadings: gravityReadings ?? this.gravityReadings,
+        tastings: tastings ?? this.tastings,
+      );
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -259,7 +293,7 @@ class BrewBatch {
         id: json['id'] as String,
         name: json['name'] as String? ?? '',
         type: json['type'] as String? ?? 'Mead',
-        status: BrewStatus.values.firstWhere((s) => s.name == json['status'], orElse: () => BrewStatus.fermenting),
+        status: statusFromJson(json['status']),
         startDate: DateTime.parse(json['startDate'] as String),
         bottlingDate: json['bottlingDate'] == null ? null : DateTime.parse(json['bottlingDate'] as String),
         rackingDate: json['rackingDate'] == null ? null : DateTime.parse(json['rackingDate'] as String),
@@ -276,7 +310,8 @@ class BrewBatch {
 }
 
 class BatchController extends ChangeNotifier {
-  static const _storageKey = 'brewer_diary_batches_v1';
+  static const _storageKey = 'brewer_diary_batches_v2';
+  static const _oldStorageKey = 'brewer_diary_batches_v1';
   final _uuid = const Uuid();
   List<BrewBatch> _batches = [];
   bool loaded = false;
@@ -286,16 +321,19 @@ class BatchController extends ChangeNotifier {
     return sorted;
   }
 
+  List<BrewBatch> get ideas => batches.where((b) => b.isIdea).toList();
+  List<BrewBatch> get completed => batches.where((b) => b.isCompleted).toList();
   String newId() => _uuid.v4();
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
+    final raw = prefs.getString(_storageKey) ?? prefs.getString(_oldStorageKey);
     if (raw != null && raw.isNotEmpty) {
       final decoded = jsonDecode(raw) as List<dynamic>;
       _batches = decoded.map((e) => BrewBatch.fromJson(Map<String, dynamic>.from(e))).toList();
     }
     loaded = true;
+    await _save();
     notifyListeners();
   }
 
@@ -338,6 +376,51 @@ class BatchController extends ChangeNotifier {
   }
 }
 
+class IdeasScreen extends StatelessWidget {
+  final BatchController controller;
+  const IdeasScreen({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Ötletek')),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchEditScreen(controller: controller, initialStatus: BrewStatus.idea))),
+            icon: const Icon(Icons.add),
+            label: const Text('Új ötlet'),
+          ),
+          body: !controller.loaded
+              ? const Center(child: CircularProgressIndicator())
+              : controller.ideas.isEmpty
+                  ? const Center(child: Text('Még nincs ötlet. Jöhet az első palackba zárt gondolat.'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
+                      itemCount: controller.ideas.length,
+                      itemBuilder: (context, index) {
+                        final batch = controller.ideas[index];
+                        return Card(
+                          child: ListTile(
+                            title: Text(batch.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text('${batch.type}\n${batch.notes.isEmpty ? 'Nincs jegyzet.' : batch.notes}'),
+                            isThreeLine: true,
+                            trailing: FilledButton(
+                              onPressed: () => controller.upsert(batch.copyWith(status: BrewStatus.fermenting, startDate: DateTime.now())),
+                              child: const Text('Indítás'),
+                            ),
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchDetailScreen(controller: controller, batchId: batch.id))),
+                          ),
+                        );
+                      },
+                    ),
+        );
+      },
+    );
+  }
+}
+
 class BatchListScreen extends StatefulWidget {
   final BatchController controller;
   const BatchListScreen({super.key, required this.controller});
@@ -355,22 +438,12 @@ class _BatchListScreenState extends State<BatchListScreen> {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
-        final batches = widget.controller.batches.where((batch) {
+        final batches = widget.controller.completed.where((batch) {
           final q = query.toLowerCase();
-          return batch.name.toLowerCase().contains(q) ||
-              batch.type.toLowerCase().contains(q) ||
-              batch.ingredients.any((i) => i.name.toLowerCase().contains(q));
+          return batch.name.toLowerCase().contains(q) || batch.type.toLowerCase().contains(q) || batch.ingredients.any((i) => i.name.toLowerCase().contains(q));
         }).toList();
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Brewer Diary'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(controller: widget.controller))),
-              ),
-            ],
-          ),
+          appBar: AppBar(title: const Text('Elkészült borok')),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchEditScreen(controller: widget.controller))),
             icon: const Icon(Icons.add),
@@ -383,17 +456,13 @@ class _BatchListScreenState extends State<BatchListScreen> {
                     Padding(
                       padding: const EdgeInsets.all(12),
                       child: TextField(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'Keresés név, típus vagy alapanyag alapján',
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Keresés név, típus vagy alapanyag alapján', border: OutlineInputBorder()),
                         onChanged: (value) => setState(() => query = value),
                       ),
                     ),
                     Expanded(
                       child: batches.isEmpty
-                          ? const Center(child: Text('Még nincs batch. Ideje életre kelteni az első főzetet.'))
+                          ? const Center(child: Text('Még nincs elkészült batch.'))
                           : ListView.builder(
                               padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
                               itemCount: batches.length,
@@ -404,13 +473,11 @@ class _BatchListScreenState extends State<BatchListScreen> {
                                     title: Text(batch.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                                     subtitle: Text(
                                       '${batch.type} • ${df.format(batch.startDate)} • ${batch.status.label}\n'
-                                      'OG: ${_sg(batch.startingGravity)} | FG: ${_sg(batch.endingGravity)} | ABV: ${_percent(batch.abv)} | Rating: ${batch.tastingAverage.toStringAsFixed(1)} | Age: ${batch.ageDays} nap',
+                                      'OG: ${_sg(batch.startingGravity)} | FG: ${_sg(batch.endingGravity)} | ABV: ${_percent(batch.abv)} | Age: ${batch.ageDays} nap',
                                     ),
                                     isThreeLine: true,
                                     trailing: const Icon(Icons.chevron_right),
-                                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                                      builder: (_) => BatchDetailScreen(controller: widget.controller, batchId: batch.id),
-                                    )),
+                                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchDetailScreen(controller: widget.controller, batchId: batch.id))),
                                   ),
                                 );
                               },
@@ -427,10 +494,123 @@ class _BatchListScreenState extends State<BatchListScreen> {
   String _percent(double? value) => value == null ? '-' : '${value.toStringAsFixed(1)}%';
 }
 
+class RatingScreen extends StatelessWidget {
+  final BatchController controller;
+  const RatingScreen({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final df = DateFormat('yyyy.MM.dd');
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final batches = controller.completed;
+        return Scaffold(
+          appBar: AppBar(title: const Text('Pontozás')),
+          body: batches.isEmpty
+              ? const Center(child: Text('Még nincs pontozható elkészült tétel.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: batches.length,
+                  itemBuilder: (context, index) {
+                    final batch = batches[index];
+                    final latest = batch.tastings.isEmpty ? null : batch.tastings.last;
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: Text(batch.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
+                                Text(batch.score == 0 ? '-' : batch.score.toStringAsFixed(1), style: Theme.of(context).textTheme.titleLarge),
+                              ],
+                            ),
+                            Text('${batch.type} • ${df.format(batch.startDate)} • ${batch.status.label}'),
+                            const SizedBox(height: 12),
+                            if (latest == null)
+                              const Text('Még nincs részletes pontozás.')
+                            else ...[
+                              Text('Legutóbbi kóstolás: ${df.format(latest.date)}'),
+                              const SizedBox(height: 8),
+                              _scoreRow('Illat', latest.aroma),
+                              _scoreRow('Íz', latest.taste),
+                              _scoreRow('Test', latest.body),
+                              _scoreRow('Egyensúly', latest.balance),
+                              _scoreRow('Utóíz', latest.finishScore),
+                              if (latest.note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(latest.note)),
+                            ],
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FilledButton.icon(onPressed: () => _addTasting(context, batch), icon: const Icon(Icons.add), label: const Text('Pontozás hozzáadása')),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _scoreRow(String label, double value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(width: 90, child: Text(label)),
+          Expanded(child: LinearProgressIndicator(value: value.clamp(0, 10) / 10)),
+          const SizedBox(width: 12),
+          Text(value == 0 ? '-' : value.toStringAsFixed(1)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addTasting(BuildContext context, BrewBatch batch) async {
+    final aroma = TextEditingController();
+    final taste = TextEditingController();
+    final body = TextEditingController();
+    final balance = TextEditingController();
+    final finish = TextEditingController();
+    final note = TextEditingController();
+    double p(String v) => double.tryParse(v.replaceAll(',', '.')) ?? 0;
+    final result = await showDialog<TastingNote>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('${batch.name} pontozása'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: aroma, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Illat 0-10')),
+            TextField(controller: taste, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Íz 0-10')),
+            TextField(controller: body, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Test 0-10')),
+            TextField(controller: balance, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Egyensúly 0-10')),
+            TextField(controller: finish, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Utóíz 0-10')),
+            TextField(controller: note, maxLines: 3, decoration: const InputDecoration(labelText: 'Jegyzet')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Mégse')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, TastingNote(id: controller.newId(), date: DateTime.now(), aroma: p(aroma.text), taste: p(taste.text), body: p(body.text), balance: p(balance.text), finishScore: p(finish.text), note: note.text.trim())),
+            child: const Text('Mentés'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) await controller.upsert(batch.copyWith(tastings: [...batch.tastings, result]));
+  }
+}
+
 class BatchEditScreen extends StatefulWidget {
   final BatchController controller;
   final BrewBatch? batch;
-  const BatchEditScreen({super.key, required this.controller, this.batch});
+  final BrewStatus initialStatus;
+  const BatchEditScreen({super.key, required this.controller, this.batch, this.initialStatus = BrewStatus.fermenting});
 
   @override
   State<BatchEditScreen> createState() => _BatchEditScreenState();
@@ -448,11 +628,12 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   DateTime startDate = DateTime.now();
   DateTime? bottlingDate;
   DateTime? rackingDate;
-  BrewStatus status = BrewStatus.fermenting;
+  late BrewStatus status;
 
   @override
   void initState() {
     super.initState();
+    status = widget.initialStatus;
     final batch = widget.batch;
     if (batch != null) {
       name.text = batch.name;
@@ -489,7 +670,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy.MM.dd');
     return Scaffold(
-      appBar: AppBar(title: Text(widget.batch == null ? 'Új batch' : 'Batch szerkesztése')),
+      appBar: AppBar(title: Text(widget.batch == null ? (status == BrewStatus.idea ? 'Új ötlet' : 'Új batch') : 'Szerkesztés')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -529,24 +710,12 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
 
   Widget _field(TextEditingController controller, String label, {TextInputType? keyboardType, int maxLines = 1}) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
-        ),
+        child: TextField(controller: controller, keyboardType: keyboardType, maxLines: maxLines, decoration: InputDecoration(labelText: label, border: const OutlineInputBorder())),
       );
 
-  Widget _dateTile(String title, String value, VoidCallback onTap) => Card(
-        child: ListTile(title: Text(title), subtitle: Text(value), trailing: const Icon(Icons.calendar_month), onTap: onTap),
-      );
+  Widget _dateTile(String title, String value, VoidCallback onTap) => Card(child: ListTile(title: Text(title), subtitle: Text(value), trailing: const Icon(Icons.calendar_month), onTap: onTap));
 
-  Future<DateTime?> _pickDate(DateTime initial) => showDatePicker(
-        context: context,
-        initialDate: initial,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2100),
-      );
+  Future<DateTime?> _pickDate(DateTime initial) => showDatePicker(context: context, initialDate: initial, firstDate: DateTime(2020), lastDate: DateTime(2100));
 
   double? _parseDouble(String value) {
     final normalized = value.trim().replaceAll(',', '.');
@@ -596,17 +765,8 @@ class BatchDetailScreen extends StatelessWidget {
           appBar: AppBar(
             title: Text(batch.name),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchEditScreen(controller: controller, batch: batch))),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () async {
-                  await controller.delete(batch.id);
-                  if (context.mounted) Navigator.of(context).pop();
-                },
-              ),
+              IconButton(icon: const Icon(Icons.edit), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchEditScreen(controller: controller, batch: batch)))),
+              IconButton(icon: const Icon(Icons.delete), onPressed: () async { await controller.delete(batch.id); if (context.mounted) Navigator.of(context).pop(); }),
             ],
           ),
           body: ListView(
@@ -625,15 +785,10 @@ class BatchDetailScreen extends StatelessWidget {
               _line('OG', batch.startingGravity?.toStringAsFixed(3) ?? '-'),
               _line('FG', batch.endingGravity?.toStringAsFixed(3) ?? '-'),
               _line('ABV', batch.abv == null ? '-' : '${batch.abv!.toStringAsFixed(2)}%'),
-              _section(context, 'Pontozás'),
-              _line('Gyors rating', batch.manualRating?.toStringAsFixed(1) ?? '-'),
-              _line('Kóstolási átlag', batch.tastingAverage == 0 ? '-' : batch.tastingAverage.toStringAsFixed(1)),
               _headerButton(context, 'Összetevők', 'Hozzáadás', () => _addIngredient(context, batch)),
               ...batch.ingredients.map((i) => ListTile(title: Text(i.name), subtitle: Text('${i.amount} ${i.unit}${i.note.isEmpty ? '' : ' • ${i.note}'}'))),
               _headerButton(context, 'SG mérések', 'Hozzáadás', () => _addGravity(context, batch)),
               ...batch.gravityReadings.map((g) => ListTile(title: Text('${g.sg.toStringAsFixed(3)} SG'), subtitle: Text('${df.format(g.date)}${g.note.isEmpty ? '' : ' • ${g.note}'}'))),
-              _headerButton(context, 'Kóstolások', 'Hozzáadás', () => _addTasting(context, batch)),
-              ...batch.tastings.map((t) => ListTile(title: Text('${df.format(t.date)} • ${t.average.toStringAsFixed(1)}/10'), subtitle: Text(t.note.isEmpty ? 'Nincs jegyzet' : t.note))),
               _section(context, 'Jegyzetek'),
               Text(batch.notes.isEmpty ? 'Nincs jegyzet.' : batch.notes),
             ],
@@ -643,16 +798,8 @@ class BatchDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _section(BuildContext context, String title) => Padding(
-        padding: const EdgeInsets.only(top: 24, bottom: 8),
-        child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-      );
-
-  Widget _headerButton(BuildContext context, String title, String button, VoidCallback onTap) => Padding(
-        padding: const EdgeInsets.only(top: 24, bottom: 8),
-        child: Row(children: [Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge)), TextButton.icon(onPressed: onTap, icon: const Icon(Icons.add), label: Text(button))]),
-      );
-
+  Widget _section(BuildContext context, String title) => Padding(padding: const EdgeInsets.only(top: 24, bottom: 8), child: Text(title, style: Theme.of(context).textTheme.titleLarge));
+  Widget _headerButton(BuildContext context, String title, String button, VoidCallback onTap) => Padding(padding: const EdgeInsets.only(top: 24, bottom: 8), child: Row(children: [Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge)), TextButton.icon(onPressed: onTap, icon: const Icon(Icons.add), label: Text(button))]));
   Widget _line(String label, String value) => ListTile(title: Text(label), trailing: Text(value));
 
   Future<void> _addIngredient(BuildContext context, BrewBatch batch) async {
@@ -698,35 +845,6 @@ class BatchDetailScreen extends StatelessWidget {
     );
     if (result != null) await controller.upsert(batch.copyWith(gravityReadings: [...batch.gravityReadings, result]));
   }
-
-  Future<void> _addTasting(BuildContext context, BrewBatch batch) async {
-    final aroma = TextEditingController();
-    final taste = TextEditingController();
-    final body = TextEditingController();
-    final balance = TextEditingController();
-    final finish = TextEditingController();
-    final note = TextEditingController();
-    double p(String v) => double.tryParse(v.replaceAll(',', '.')) ?? 0;
-    final result = await showDialog<TastingNote>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Új kóstolás'),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: aroma, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Illat 0-10')),
-          TextField(controller: taste, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Íz 0-10')),
-          TextField(controller: body, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Test 0-10')),
-          TextField(controller: balance, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Egyensúly 0-10')),
-          TextField(controller: finish, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Utóíz 0-10')),
-          TextField(controller: note, decoration: const InputDecoration(labelText: 'Jegyzet')),
-        ])),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Mégse')),
-          FilledButton(onPressed: () => Navigator.pop(context, TastingNote(id: controller.newId(), date: DateTime.now(), aroma: p(aroma.text), taste: p(taste.text), body: p(body.text), balance: p(balance.text), finishScore: p(finish.text), note: note.text.trim())), child: const Text('Mentés')),
-        ],
-      ),
-    );
-    if (result != null) await controller.upsert(batch.copyWith(tastings: [...batch.tastings, result]));
-  }
 }
 
 class SettingsScreen extends StatelessWidget {
@@ -749,14 +867,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showExport(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Export JSON'),
-        content: SingleChildScrollView(child: SelectableText(controller.exportJson())),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-      ),
-    );
+    showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Export JSON'), content: SingleChildScrollView(child: SelectableText(controller.exportJson())), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))]));
   }
 
   void _showImport(BuildContext context) {
@@ -768,13 +879,7 @@ class SettingsScreen extends StatelessWidget {
         content: TextField(controller: text, maxLines: 10, decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Illeszd be az exportált JSON-t')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Mégse')),
-          FilledButton(
-            onPressed: () async {
-              await controller.importJson(text.text);
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Import'),
-          ),
+          FilledButton(onPressed: () async { await controller.importJson(text.text); if (context.mounted) Navigator.pop(context); }, child: const Text('Import')),
         ],
       ),
     );
