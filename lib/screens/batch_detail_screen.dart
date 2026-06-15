@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../controllers/batch_controller.dart';
 import '../models/brew_batch.dart';
+import '../models/brew_status.dart';
 import '../models/gravity_reading.dart';
 import '../models/ingredient.dart';
 import 'batch_edit_screen.dart';
