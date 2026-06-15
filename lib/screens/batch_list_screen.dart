@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../controllers/batch_controller.dart';
+import '../models/brew_status.dart';
 import 'batch_detail_screen.dart';
 import 'batch_edit_screen.dart';
 
