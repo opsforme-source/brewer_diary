@@ -378,7 +378,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy.MM.dd');
     return Scaffold(appBar: AppBar(title: Text(widget.batch == null ? (status == BrewStatus.idea ? 'Új ötlet' : 'Új batch') : 'Szerkesztés')), body: ListView(padding: const EdgeInsets.all(16), children: [
-      _field(name, 'Név'), _field(type, 'Típus'), DropdownButtonFormField<BrewStatus>(value: status, decoration: const InputDecoration(labelText: 'Státusz'), items: BrewStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(), onChanged: (value) => setState(() => status = value ?? status)), const SizedBox(height: 12),
+      _field(name, 'Név'), _field(type, 'Típus'), DropdownButtonFormField<BrewStatus>(initialValue: status, decoration: const InputDecoration(labelText: 'Státusz'), items: BrewStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(), onChanged: (value) => setState(() => status = value ?? status)), const SizedBox(height: 12),
       _dateTile('Kezdés dátuma', df.format(startDate), () async { final picked = await _pickDate(startDate); if (picked != null) setState(() => startDate = picked); }),
       _dateTile('Racking dátuma', rackingDate == null ? '-' : df.format(rackingDate!), () async { final picked = await _pickDate(rackingDate ?? DateTime.now()); if (picked != null) setState(() => rackingDate = picked); }),
       _dateTile('Palackozás dátuma', bottlingDate == null ? '-' : df.format(bottlingDate!), () async { final picked = await _pickDate(bottlingDate ?? DateTime.now()); if (picked != null) setState(() => bottlingDate = picked); }),
