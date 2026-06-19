@@ -13,9 +13,9 @@ Flutter starter app for tracking wine, mead, SG/ABV, ingredients, tastings, and 
 - Gravity readings timeline
 - Tasting notes with category scores and calculated average
 - Local persistence using `shared_preferences`
-- File-based backup/restore using `.bdiary` files
+- Plugin-free local backup slots, keeping the last 10 backups
+- Backup export/import as text for manual transfer between devices
 - Bundled seed import from the original spreadsheet screenshot
-- JSON export/import strings from settings screen
 
 ## Setup
 
@@ -24,22 +24,25 @@ flutter pub get
 flutter run
 ```
 
-## Backup files
+## Backups
 
-The recommended backup flow is now file based:
-
-```text
-Beállítások → Backup mentése fájlba
-Beállítások → Backup visszaállítása fájlból
-```
-
-Backup files use this kind of name:
+The plugin-free backup flow is:
 
 ```text
-brewer_diary_backup_2026-06-19_2130.bdiary
+Beállítások → Helyi backup mentése
+Beállítások → Helyi backup visszaállítása
 ```
 
-The `.bdiary` file is a versioned JSON wrapper. Older raw JSON list exports can still be restored for compatibility.
+The app keeps the latest 10 local backups in `shared_preferences`. These are useful for quick recovery after accidental edits or imports.
+
+For moving data between devices without file-picker plugins:
+
+```text
+Beállítások → Backup export szövegként
+Beállítások → Backup import szövegből
+```
+
+The backup text is a versioned JSON wrapper. Older raw JSON list exports can still be restored for compatibility.
 
 ## Seed data
 
@@ -72,7 +75,7 @@ lib/
   controllers/batch_controller.dart State and local persistence
   models/                           Data/domain objects and JSON parsing
   screens/                          User-facing screens and dialogs
-  services/                         File backup wrappers and future integrations
+  services/                         Backup wrappers and future integrations
 ```
 
 ### Responsibility map
@@ -81,11 +84,11 @@ lib/
 - `models/brew_status.dart`: batch lifecycle states and Hungarian labels.
 - `models/brew_type.dart`: standard brew type dropdown values and compatibility handling for older/custom imported values.
 - `controllers/batch_controller.dart`: loads, saves, imports, exports, mutates batches, and exposes filtered lists for ideas, active brews, and bottled batches.
-- `services/backup_service.dart`: versioned `.bdiary` backup wrapper and raw JSON compatibility parser.
+- `services/backup_service.dart`: versioned backup wrapper and raw JSON compatibility parser.
 - `screens/ideas_screen.dart`: planned batches only.
 - `screens/active_batch_screen.dart`: fermenting, secondary, and aging batches.
 - `screens/batch_list_screen.dart`: bottled and finished batches, without active brews mixed in.
 - `screens/rating_screen.dart`: detailed tasting scores for bottled/finished batches.
 - `screens/batch_edit_screen.dart`: create/edit form, brew type dropdown, default FG 1.000, finished date handling.
 - `screens/batch_detail_screen.dart`: production details, ingredient add/edit/delete, SG readings, and notes.
-- `screens/settings_screen.dart`: file backup/restore, bundled seed import, plus legacy JSON text export/import.
+- `screens/settings_screen.dart`: local backups, backup text export/import, bundled seed import, plus legacy JSON text export.
