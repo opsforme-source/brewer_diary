@@ -71,13 +71,13 @@ class SettingsScreen extends StatelessWidget {
         fileName: fileName,
         type: FileType.custom,
         allowedExtensions: [BackupService.backupExtension, 'json'],
-        bytes: bytes,
       );
 
       if (!context.mounted) return;
       if (savedPath == null) {
         _snack(context, 'Backup mentés megszakítva.');
       } else {
+        await File(savedPath).writeAsBytes(bytes);
         _snack(context, 'Backup fájl elmentve.');
       }
     } catch (error) {
