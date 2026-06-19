@@ -66,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
       final fileName = _backupService.makeBackupFileName();
       final bytes = Uint8List.fromList(utf8.encode(backupText));
 
-      final savedPath = await FilePicker.platform.saveFile(
+      final savedPath = await FilePicker.saveFile(
         dialogTitle: 'Brewer Diary backup mentése',
         fileName: fileName,
         type: FileType.custom,
@@ -103,7 +103,7 @@ class SettingsScreen extends StatelessWidget {
     if (confirmed != true) return;
 
     try {
-      final picked = await FilePicker.platform.pickFiles(
+      final picked = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: [BackupService.backupExtension, 'json'],
         withData: true,
