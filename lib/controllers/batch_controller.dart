@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/brew_batch.dart';
+import '../models/brew_status.dart';
 
 /// Owns the in-memory batch list and persistence.
 ///
@@ -25,7 +26,22 @@ class BatchController extends ChangeNotifier {
   }
 
   List<BrewBatch> get ideas => batches.where((batch) => batch.isIdea).toList();
+
+  /// All non-idea batches. Kept for older screens and broad export logic.
   List<BrewBatch> get completed => batches.where((batch) => batch.isCompleted).toList();
+
+  /// Batches still being worked on.
+  List<BrewBatch> get active => batches
+      .where((batch) =>
+          batch.status == BrewStatus.fermenting ||
+          batch.status == BrewStatus.secondary ||
+          batch.status == BrewStatus.aging)
+      .toList();
+
+  /// Batches that are no longer in the production flow.
+  List<BrewBatch> get bottled => batches
+      .where((batch) => batch.status == BrewStatus.bottled || batch.status == BrewStatus.finished)
+      .toList();
 
   String newId() => _uuid.v4();
 
