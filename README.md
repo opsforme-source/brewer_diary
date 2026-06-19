@@ -4,10 +4,10 @@ Flutter starter app for tracking wine, mead, SG/ABV, ingredients, tastings, and 
 
 ## Features
 
-- Separate tabs for ideas, completed batches, ratings, and settings
+- Separate tabs for ideas, active brews, bottled/finished batches, ratings, and settings
 - Batch list with status, dates, OG, FG, calculated ABV, total age, and bottle age
 - Add/edit batches
-- Ingredient list per batch
+- Ingredient list per batch with add/edit/delete actions
 - Free notes
 - Gravity readings timeline
 - Tasting notes with category scores and calculated average
@@ -59,10 +59,11 @@ lib/
 
 - `models/brew_batch.dart`: main domain model, derived ABV, total age, bottle age, and finished-date age stop logic.
 - `models/brew_status.dart`: batch lifecycle states and Hungarian labels.
-- `controllers/batch_controller.dart`: loads, saves, imports, exports, and mutates batches.
+- `controllers/batch_controller.dart`: loads, saves, imports, exports, mutates batches, and exposes filtered lists for ideas, active brews, and bottled batches.
 - `screens/ideas_screen.dart`: planned batches only.
-- `screens/batch_list_screen.dart`: production list for active/completed batches, without scoring clutter.
-- `screens/rating_screen.dart`: detailed tasting scores.
+- `screens/active_batch_screen.dart`: fermenting, secondary, and aging batches.
+- `screens/batch_list_screen.dart`: bottled and finished batches, without active brews mixed in.
+- `screens/rating_screen.dart`: detailed tasting scores for bottled/finished batches.
 - `screens/batch_edit_screen.dart`: create/edit form, default FG 1.000, finished date handling.
-- `screens/batch_detail_screen.dart`: production details, ingredients, SG readings, and notes.
+- `screens/batch_detail_screen.dart`: production details, ingredient add/edit/delete, SG readings, and notes.
 - `screens/settings_screen.dart`: bundled seed import plus JSON export/import.
