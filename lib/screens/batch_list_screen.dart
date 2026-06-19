@@ -4,12 +4,11 @@ import 'package:intl/intl.dart';
 import '../controllers/batch_controller.dart';
 import '../models/brew_status.dart';
 import 'batch_detail_screen.dart';
-import 'batch_edit_screen.dart';
 
-/// Lists all non-idea batches.
+/// Lists bottled and finished batches only.
 ///
-/// Ratings are intentionally not shown here. Scoring has its own tab so the
-/// batch list stays focused on production/logging details.
+/// Active production batches are shown on `ActiveBatchScreen`, so bottled or
+/// consumed bottles do not mix with the work-in-progress cellar.
 class BatchListScreen extends StatefulWidget {
   final BatchController controller;
   const BatchListScreen({super.key, required this.controller});
@@ -27,7 +26,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
-        final batches = widget.controller.completed.where((batch) {
+        final batches = widget.controller.bottled.where((batch) {
           final q = query.toLowerCase();
           return batch.name.toLowerCase().contains(q) ||
               batch.type.toLowerCase().contains(q) ||
@@ -35,16 +34,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
         }).toList();
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Elkészült borok')),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BatchEditScreen(controller: widget.controller),
-              ),
-            ),
-            icon: const Icon(Icons.add),
-            label: const Text('Új batch'),
-          ),
+          appBar: AppBar(title: const Text('Palackozva')),
           body: !widget.controller.loaded
               ? const Center(child: CircularProgressIndicator())
               : Column(
@@ -62,7 +52,7 @@ class _BatchListScreenState extends State<BatchListScreen> {
                     ),
                     Expanded(
                       child: batches.isEmpty
-                          ? const Center(child: Text('Még nincs elkészült batch.'))
+                          ? const Center(child: Text('Még nincs palackozott vagy elfogyott batch.'))
                           : ListView.builder(
                               padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
                               itemCount: batches.length,
