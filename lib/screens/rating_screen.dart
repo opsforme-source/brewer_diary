@@ -8,7 +8,8 @@ import '../models/tasting_note.dart';
 
 /// Dedicated scoring tab.
 ///
-/// This keeps sensory evaluation separate from production metadata.
+/// This keeps sensory evaluation separate from production metadata. Only
+/// bottled/finished batches appear here by default.
 class RatingScreen extends StatelessWidget {
   final BatchController controller;
   const RatingScreen({super.key, required this.controller});
@@ -19,11 +20,11 @@ class RatingScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final batches = controller.completed;
+        final batches = controller.bottled;
         return Scaffold(
           appBar: AppBar(title: const Text('Pontozás')),
           body: batches.isEmpty
-              ? const Center(child: Text('Még nincs pontozható elkészült tétel.'))
+              ? const Center(child: Text('Még nincs pontozható palackozott tétel.'))
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: batches.length,
