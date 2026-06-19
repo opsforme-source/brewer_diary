@@ -70,12 +70,7 @@ class BatchDetailScreen extends StatelessWidget {
               _line('ABV', batch.abv == null ? '-' : '${batch.abv!.toStringAsFixed(2)}%'),
               _headerButton(context, 'Összetevők', 'Hozzáadás', () => _addIngredient(context, batch)),
               ...batch.ingredients.map(
-                (ingredient) => ListTile(
-                  title: Text(ingredient.name),
-                  subtitle: Text(
-                    '${ingredient.amount} ${ingredient.unit}${ingredient.note.isEmpty ? '' : ' • ${ingredient.note}'}',
-                  ),
-                ),
+                (ingredient) => _ingredientTile(context, batch, ingredient),
               ),
               _headerButton(context, 'SG mérések', 'Hozzáadás', () => _addGravity(context, batch)),
               ...batch.gravityReadings.map(
@@ -112,16 +107,86 @@ class BatchDetailScreen extends StatelessWidget {
 
   Widget _line(String label, String value) => ListTile(title: Text(label), trailing: Text(value));
 
-  Future<void> _addIngredient(BuildContext context, BrewBatch batch) async {
-    final name = TextEditingController();
-    final amount = TextEditingController();
-    final unit = TextEditingController(text: 'g');
-    final note = TextEditingController();
+  Widget _ingredientTile(BuildContext context, BrewBatch batch, Ingredient ingredient) {
+    return ListTile(
+      title: Text(ingredient.name),
+      subtitle: Text(
+        '${ingredient.amount} ${ingredient.unit}${ingredient.note.isEmpty ? '' : ' • ${ingredient.note}'}',
+      ),
+      trailing: PopupMenuButton<String>(
+        onSelected: (action) {
+          if (action == 'edit') _editIngredient(context, batch, ingredient);
+          if (action == 'delete') _deleteIngredient(context, batch, ingredient);
+        },
+        itemBuilder: (context) => const [
+          PopupMenuItem(value: 'edit', child: Text('Szerkesztés')),
+          PopupMenuItem(value: 'delete', child: Text('Törlés')),
+        ],
+      ),
+    );
+  }
 
-    final result = await showDialog<Ingredient>(
+  Future<void> _addIngredient(BuildContext context, BrewBatch batch) async {
+    final result = await _ingredientDialog(context);
+    if (result != null) {
+      await controller.upsert(batch.copyWith(ingredients: [...batch.ingredients, result]));
+    }
+  }
+
+  Future<void> _editIngredient(
+    BuildContext context,
+    BrewBatch batch,
+    Ingredient ingredient,
+  ) async {
+    final result = await _ingredientDialog(context, existing: ingredient);
+    if (result == null) return;
+
+    final updatedIngredients = batch.ingredients
+        .map((item) => item.id == ingredient.id ? result : item)
+        .toList();
+    await controller.upsert(batch.copyWith(ingredients: updatedIngredients));
+  }
+
+  Future<void> _deleteIngredient(
+    BuildContext context,
+    BrewBatch batch,
+    Ingredient ingredient,
+  ) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Új összetevő'),
+        title: const Text('Összetevő törlése'),
+        content: Text('Törlöd ezt az összetevőt?\n\n${ingredient.name}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Mégse')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Törlés')),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final updatedIngredients = batch.ingredients
+        .where((item) => item.id != ingredient.id)
+        .toList();
+    await controller.upsert(batch.copyWith(ingredients: updatedIngredients));
+  }
+
+  Future<Ingredient?> _ingredientDialog(
+    BuildContext context, {
+    Ingredient? existing,
+  }) {
+    final name = TextEditingController(text: existing?.name ?? '');
+    final amount = TextEditingController(
+      text: existing == null || existing.amount == 0 ? '' : existing.amount.toString(),
+    );
+    final unit = TextEditingController(text: existing?.unit ?? 'g');
+    final note = TextEditingController(text: existing?.note ?? '');
+
+    return showDialog<Ingredient>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(existing == null ? 'Új összetevő' : 'Összetevő szerkesztése'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -137,7 +202,7 @@ class BatchDetailScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(
               context,
               Ingredient(
-                id: controller.newId(),
+                id: existing?.id ?? controller.newId(),
                 name: name.text.trim(),
                 amount: double.tryParse(amount.text.replaceAll(',', '.')) ?? 0,
                 unit: unit.text.trim(),
@@ -149,10 +214,6 @@ class BatchDetailScreen extends StatelessWidget {
         ],
       ),
     );
-
-    if (result != null) {
-      await controller.upsert(batch.copyWith(ingredients: [...batch.ingredients, result]));
-    }
   }
 
   Future<void> _addGravity(BuildContext context, BrewBatch batch) async {
