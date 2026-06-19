@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/batch_controller.dart';
+import 'active_batch_screen.dart';
 import 'batch_list_screen.dart';
 import 'ideas_screen.dart';
 import 'rating_screen.dart';
@@ -22,6 +23,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final pages = [
       IdeasScreen(controller: widget.controller),
+      ActiveBatchScreen(controller: widget.controller),
       BatchListScreen(controller: widget.controller),
       RatingScreen(controller: widget.controller),
       SettingsScreen(controller: widget.controller),
@@ -39,9 +41,14 @@ class _MainShellState extends State<MainShell> {
             label: 'Ötletek',
           ),
           NavigationDestination(
+            icon: Icon(Icons.science_outlined),
+            selectedIcon: Icon(Icons.science),
+            label: 'Folyamatban',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.local_bar_outlined),
             selectedIcon: Icon(Icons.local_bar),
-            label: 'Elkészült',
+            label: 'Palackozva',
           ),
           NavigationDestination(
             icon: Icon(Icons.star_outline),
