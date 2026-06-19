@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../controllers/batch_controller.dart';
 import '../models/brew_batch.dart';
 import '../models/brew_status.dart';
+import '../models/brew_type.dart';
 
 /// Create/edit form for both ideas and real batches.
 ///
@@ -28,7 +29,6 @@ class BatchEditScreen extends StatefulWidget {
 
 class _BatchEditScreenState extends State<BatchEditScreen> {
   final name = TextEditingController();
-  final type = TextEditingController();
   final og = TextEditingController();
   final fg = TextEditingController();
   final rating = TextEditingController();
@@ -36,6 +36,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   final yeast = TextEditingController();
   final notes = TextEditingController();
 
+  String selectedType = 'Mead';
   DateTime startDate = DateTime.now();
   DateTime? bottlingDate;
   DateTime? rackingDate;
@@ -50,7 +51,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
     final batch = widget.batch;
     if (batch != null) {
       name.text = batch.name;
-      type.text = batch.type;
+      selectedType = batch.type.isEmpty ? 'Other' : batch.type;
       og.text = batch.startingGravity?.toStringAsFixed(3) ?? '';
       fg.text = batch.endingGravity?.toStringAsFixed(3) ?? '';
       rating.text = batch.manualRating?.toStringAsFixed(1) ?? '';
@@ -63,7 +64,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
       finishedDate = batch.finishedDate;
       status = batch.status;
     } else {
-      type.text = 'Mead';
+      selectedType = 'Mead';
       fg.text = '1.000';
     }
   }
@@ -71,7 +72,6 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   @override
   void dispose() {
     name.dispose();
-    type.dispose();
     og.dispose();
     fg.dispose();
     rating.dispose();
@@ -84,6 +84,8 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy.MM.dd');
+    final typeOptions = brewTypeOptionsFor(selectedType);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.batch == null
@@ -94,7 +96,18 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _field(name, 'Név'),
-          _field(type, 'Típus'),
+          DropdownButtonFormField<String>(
+            value: selectedType,
+            decoration: const InputDecoration(
+              labelText: 'Típus',
+              border: OutlineInputBorder(),
+            ),
+            items: typeOptions
+                .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                .toList(),
+            onChanged: (value) => setState(() => selectedType = value ?? selectedType),
+          ),
+          const SizedBox(height: 12),
           DropdownButtonFormField<BrewStatus>(
             value: status,
             decoration: const InputDecoration(labelText: 'Státusz'),
@@ -190,7 +203,7 @@ class _BatchEditScreenState extends State<BatchEditScreen> {
     final batch = BrewBatch(
       id: old?.id ?? widget.controller.newId(),
       name: name.text.trim().isEmpty ? 'Névtelen batch' : name.text.trim(),
-      type: type.text.trim().isEmpty ? 'Egyéb' : type.text.trim(),
+      type: selectedType,
       status: status,
       startDate: startDate,
       bottlingDate: bottlingDate,
